@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>暈船系統 EP.02</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+/* Layout: one 4:5 IG-carousel card centered on a black stage; tap to advance, the system panel slides over it. */
+:root {
+  --bg: #0b0b0d;
+  --card: #0b0b0d;
+  --ink: #f4f3ee;
+  --mute: #a9a8ad;
+  --dim: #6f6e74;
+  --red: #f24b4b;
+  --green: #3ff29b;
+  --green-bg: #0c1511;
+  --quote-bg: #1d1c21;
+  --line: #2a2a30;
+  --cream: #f1ece3;
+  --cream-ink: #1a1816;
+  --cream-red: #9a1f1a;
+  --serif: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+.stage {
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 4 / 5;
+  max-height: 100%;
+  position: relative;
+}
+@media (max-aspect-ratio: 4/5) { .stage { aspect-ratio: auto; height: 100%; } }
+.card {
+  position: absolute; inset: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  padding: clamp(20px, 6%, 40px);
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+}
+.card.locked { cursor: default; }
+.top {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 700; letter-spacing: .12em; font-size: 13px; color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.top button {
+  font: inherit; letter-spacing: .08em; color: var(--green);
+  background: none; border: 1px solid var(--green); padding: 4px 10px; cursor: pointer;
+}
+.top button:focus-visible, .choice:focus-visible, .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; justify-content: center; gap: 14px;
+  padding-block: 18px;
+  scrollbar-width: none;
+}
+.body::-webkit-scrollbar { display: none; }
+.body > * { flex-shrink: 0; }
+.foot {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--dim); min-height: 24px;
+}
+.arrow { color: var(--green); font-size: 22px; font-weight: 700; }
+.foot .hint { letter-spacing: .06em; }
+
+/* text kinds */
+.ln { opacity: 1; transform: none; animation: rise .5s both; text-wrap: balance; white-space: pre-line; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .ln, .toast { animation: none !important; } }
+.h { font-weight: 700; letter-spacing: .14em; color: var(--mute); font-size: 14px; }
+.p { color: var(--mute); font-size: clamp(16px, 3.6vw, 19px); line-height: 1.7; }
+.b { color: var(--ink); font-weight: 700; font-size: clamp(17px, 4vw, 22px); line-height: 1.6; }
+.big { font-family: var(--serif); font-weight: 900; font-size: clamp(28px, 7.4vw, 42px); line-height: 1.3; }
+.red { font-family: var(--serif); font-weight: 900; font-size: clamp(28px, 7.4vw, 42px); line-height: 1.3; color: var(--red); }
+.grn { font-family: var(--serif); font-weight: 900; font-size: clamp(26px, 6.8vw, 38px); line-height: 1.3; color: var(--green); }
+.sys { color: var(--green); font-weight: 900; letter-spacing: .2em; font-size: 15px; }
+.box { background: var(--quote-bg); padding: 16px 20px; font-weight: 700; font-size: clamp(16px, 3.8vw, 20px); line-height: 1.6; }
+.sysbox { border: 1.5px solid var(--green); background: var(--green-bg); color: var(--green); padding: 14px 18px; font-weight: 700; font-size: clamp(15px, 3.5vw, 18px); line-height: 1.7; }
+.r { color: var(--red); }
+.g { color: var(--green); }
+
+/* choices */
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start;
+  text-align: left; font: inherit; color: var(--ink);
+  background: transparent; border: 1.5px solid var(--line);
+  padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.choice:hover:not(:disabled) { border-color: var(--green); background: var(--green-bg); }
+.choice .k { font-family: var(--serif); font-weight: 900; font-size: 26px; line-height: 1; color: var(--green); }
+.choice .t { font-weight: 700; font-size: clamp(15px, 3.6vw, 17px); line-height: 1.55; min-width: 0; }
+.choice:disabled { cursor: not-allowed; opacity: .5; }
+.choice:disabled .k { color: var(--dim); }
+.choice .lock { display: block; color: var(--red); font-size: 13px; font-weight: 700; margin-top: 4px; letter-spacing: .04em; }
+
+/* toasts */
+.toasts { position: absolute; top: 52px; right: clamp(20px, 6%, 40px); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; z-index: 5; }
+.toast { font-weight: 900; font-size: 13px; letter-spacing: .06em; padding: 4px 10px; border: 1px solid currentColor; background: var(--card); animation: toast 2.4s both; font-variant-numeric: tabular-nums; }
+@keyframes toast { 0% { opacity: 0; transform: translateY(-6px); } 12%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* panel */
+.panel {
+  position: absolute; inset: 0; z-index: 10;
+  background: var(--green-bg); border: 1.5px solid var(--green);
+  padding: clamp(20px, 6%, 40px); display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; }
+.panel-head .ttl { color: var(--green); font-weight: 900; font-size: 20px; }
+.panel-head .who { color: var(--mute); font-weight: 700; }
+.lvl-label { color: var(--dim); font-size: 13px; }
+.lvl { font-family: var(--serif); font-weight: 900; font-size: clamp(26px, 6.6vw, 36px); line-height: 1.2; }
+.stat { display: grid; gap: 6px; }
+.stat .row { display: flex; justify-content: space-between; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bar { height: 10px; background: #1f2421; }
+.bar i { display: block; height: 100%; background: var(--green); transition: width .6s; }
+.bar.warn i { background: var(--red); }
+.stat .warn-t { color: var(--red); }
+.pick { border-top: 1px solid #22302a; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 18px; font-variant-numeric: tabular-nums; }
+.btn { font: inherit; font-weight: 700; letter-spacing: .08em; padding: 10px 16px; cursor: pointer; border: 1.5px solid var(--green); color: var(--green); background: transparent; }
+.btn.solid { background: var(--green); color: #04110a; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* resist minigame */
+.phone { border: 1.5px solid var(--line); background: #111114; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.phone .chat-name { font-weight: 700; font-size: 13px; color: var(--mute); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.bub { max-width: 80%; padding: 8px 12px; font-size: 15px; line-height: 1.5; }
+.bub.her { background: var(--quote-bg); align-self: flex-start; }
+.bub.me { background: #19362a; align-self: flex-end; color: var(--ink); }
+.bub.me small { display: block; color: var(--mute); font-size: 11px; text-align: right; }
+.draft { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); padding: 8px 10px; min-height: 44px; }
+.draft .txt { flex: 1; font-size: 15px; color: var(--ink); min-width: 0; }
+.draft .txt.empty { color: var(--dim); }
+.del, .send { font: inherit; font-weight: 900; border: 0; padding: 8px 12px; cursor: pointer; }
+.del { background: var(--green); color: #04110a; }
+.send { background: transparent; color: var(--red); border: 1.5px solid var(--red); }
+.del:disabled, .send:disabled { background: var(--line); color: var(--dim); border-color: var(--line); cursor: default; }
+.draft .btns { display: flex; gap: 6px; flex-shrink: 0; }
+.meter { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; color: var(--mute); font-variant-numeric: tabular-nums; }
+
+/* schedule minigame */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.act { text-align: left; font: inherit; color: var(--ink); background: transparent; border: 1.5px solid var(--line); padding: 10px 12px; cursor: pointer; display: grid; gap: 4px; }
+.act b { font-size: 16px; }
+.act span { font-size: 12px; color: var(--mute); line-height: 1.5; }
+.act[aria-pressed="true"] { border-color: var(--green); background: var(--green-bg); }
+.act[aria-pressed="true"] b { color: var(--green); }
+
+/* ending: cream skill card */
+.skill { background: var(--cream); color: var(--cream-ink); padding: 18px 20px; display: grid; gap: 4px; }
+.skill .st { font-weight: 700; letter-spacing: .12em; font-size: 12px; color: #6b655c; }
+.skill h3 { font-family: var(--serif); font-weight: 900; font-size: 26px; margin: 4px 0 8px; }
+.skill .it { display: grid; grid-template-columns: 30px 72px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid #d6cfc3; font-size: 14px; align-items: baseline; }
+.skill .it .n { font-family: var(--serif); font-weight: 900; color: var(--cream-red); }
+.skill .it b { font-weight: 900; }
+.skill .it span { min-width: 0; }
+@media (max-width: 440px) {
+  .skill .it { grid-template-columns: 30px 1fr; row-gap: 2px; }
+  .skill .it .n { grid-row: span 2; }
+  .skill .it b, .skill .it span { grid-column: 2; }
+  .skill .it span { color: #4a453e; }
+}
+.endrow { display: flex; gap: 10px; flex-wrap: wrap; }
+.dots { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--mute); }
+.dots i { width: 10px; height: 10px; border: 1.5px solid var(--green); display: inline-block; }
+.dots i.on { background: var(--green); }
+</style>
+
+<div class="stage">
+  <div class="card" id="card" tabindex="0" aria-live="polite">
+    <div class="top"><span id="ep">EP.02</span><span id="day">DAY 01/90</span><button id="panelBtn" type="button">面板</button></div>
+    <div class="body" id="body"></div>
+    <div class="foot"><span class="hint" id="hint">第 2 集｜去，還是不去？</span><span class="arrow" id="arrow">→</span></div>
+    <div class="toasts" id="toasts"></div>
+  </div>
+  <div class="panel" id="panel" hidden></div>
+</div>
+
+<script>
+const START = { need: 98, calm: 10, spine: 5, attract: 18 };
+const NAMES = { need: '需求感', calm: '情緒穩定', spine: '底氣', attract: '吸引力' };
+let S;
+function fresh() { return { ...START, flags: {}, scene: 'title', i: 0, day: 1, picks: [], sent: 0 }; }
+const clamp = v => Math.max(0, Math.min(100, Math.round(v)));
+function choicePct(s = S) {
+  return clamp(s.spine * 0.9 + s.calm * 0.7 + s.attract * 0.6 - s.need * 0.5 + 20);
+}
+function levelName(c) {
+  if (c < 20) return 'Lv.1 公用工具人';
+  if (c < 40) return 'Lv.12 暈船復健中';
+  if (c < 65) return 'Lv.30 有邊界的好人';
+  if (c < 85) return 'Lv.60 自己人生的主角';
+  return 'Lv.MAX 重新被認識的人';
+}
+
+/* line helpers: [kind, text]; *x* = red, _x_ = green */
+const L = (k, t) => [k, t];
+const h = t => L('h', t), p = t => L('p', t), b = t => L('b', t), big = t => L('big', t),
+      red = t => L('red', t), grn = t => L('grn', t), box = t => L('box', t), sysbox = t => L('sysbox', t),
+      sys = () => L('sys', 'SKYLER：');
+
+const PICKS = {
+  gym:     { name: '健身房', note: '每週三次。吸引力↑ 穩定↑', fx: { attract: 8, calm: 4, need: -4 }, line: '每週三次健身房。第一週，連空槓都推得發抖。' },
+  photo:   { name: '週六攝影課', note: '學一件只屬於自己的事。底氣↑', fx: { spine: 6, attract: 4, need: -4 }, line: '報了週六的攝影課。老師說：「你拍東西很有耐心。」', flag: 'photo' },
+  look:    { name: '剪頭髮・換衣櫃', note: '丟掉格子襯衫。吸引力↑↑', fx: { attract: 10, need: -2 }, line: '剪了頭髮，丟掉三年的格子襯衫。同事問我是不是交女朋友了。' },
+  friends: { name: '找老朋友吃飯', note: '世界變大一點。需求感↓↓', fx: { calm: 8, need: -8 }, line: '跟大學室友吃火鍋。他們說：「你終於出現了。」' },
+  standby: { name: '隨時待命', note: '手機永遠開聲音，等她找你。', fx: { need: 10, calm: -6 }, line: '手機永遠開著聲音。她傳了兩次訊息，都是要我幫忙。' },
+};
+
+const SCENES = {
+  title: [
+    { day: 1, lines: [h('上一集'), p('在一百個人面前，她說我是她「最好用的朋友」。\n那一夜，我的系統覺醒了。'), big('第 2 集：\n去，還是不去？'), sysbox('【九十天倒數・第 1 天】\n【你的每個選擇，都會改變宿主面板。】')],
+      choices: [{ k: '▶', t: '開始第 2 集', go: 'd1' }] },
+  ],
+  d1: [
+    { day: 1, lines: [h('DAY 01｜早上 8:12'), p('隔天早上，她的限動：\n保時捷的方向盤，手腕上的卡地亞。'), p('三分鐘後，她私訊我——'), box('「欸，我電腦又壞了，\n你今天能來嗎？」')] },
+    { lines: [b('我的拇指已經在打字了。'), b('「好，我下班就——」'), red('然後，手機震了一下。')] },
+    { lines: [sys(), grn('先別按送出。'), sysbox('【她的電腦上個月剛修過。】\n【上次是他送卡地亞那天，你修到十一點。】\n【她請你一杯手搖，半糖去冰，是她自己的口味。】')] },
+    { lines: [h('【系統・任務一】'), big('怎麼回？')], choices: [
+      { k: 'A', t: '「好，我下班就過去！」', fx: { need: 6, spine: -3 }, go: 'd1a' },
+      { k: 'B', t: '「今天不行，我有事。」', fx: { need: -8, spine: 8, calm: -4 }, go: 'd1b' },
+      { k: 'C', t: '「信義路那間維修行很推，報我名字打九折。」', fx: { need: -10, spine: 5, attract: 5 }, go: 'd1c' },
+    ] },
+  ],
+  d1a: [
+    { lines: [h('DAY 01｜晚上 7:40｜她家'), p('她開門的時候在講電話，\n用肩膀夾著手機，把筆電塞給我。'), box('「密碼是我生日喔，你知道的。」'), red('然後她出門了。')] },
+    { lines: [p('我修到十點半。'), p('桌上有兩張電影票根，\n和一個卡地亞的空盒子。'), b('電腦修好了。\n她沒有回來。')] },
+    { lines: [sys(), grn('你知道問題不在電腦。'), sysbox('【懲罰任務：接下來 24 小時，\n不准主動傳任何訊息給她。】')], go: 'resist' },
+  ],
+  d1b: [
+    { lines: [p('已讀。\n三分鐘。\n五分鐘。'), box('「蛤？好吧😢」'), box('「那我問彥廷好了。」'), red('那個名字，像一根刺。')] },
+    { lines: [sys(), grn('很好。\n這是你第一次說「不」。'), sysbox('【會痛，代表有效。】\n【任務二：接下來 24 小時，\n不准主動傳任何訊息給她。】')], go: 'resist' },
+  ],
+  d1c: [
+    { lines: [p('已讀。'), box('「哈哈哈哈你很煩」'), box('「好啦我自己去」'), b('她沒有生氣。\n她甚至笑了。')] },
+    { lines: [sys(), grn('幽默，是底氣的副作用。'), sysbox('【任務二：接下來 24 小時，\n不准主動傳任何訊息給她。】')], go: 'resist' },
+  ],
+  resist: [{ mini: 'resist' }],
+  afterResist: [
+    { day: 2, lines: s => s.sent === 0
+      ? [h('DAY 02｜晚上 8:12'), grn('24 小時。\n零則訊息。'), b('原來不傳訊息，\n世界也不會塌。'), sysbox('【任務完成。】')]
+      : [h('DAY 02｜晚上 8:12'), red(`你送出了 ${s.sent} 則。`), p('她回了一個貼圖。\n一隻在揮手的熊。'), b('我盯著那隻熊看了二十分鐘。'), sysbox('【任務失敗。需求感上升。】\n【沒關係，你還有八十八天。】')] , go: 'd8' },
+  ],
+  d8: [
+    { day: 8, lines: [h('DAY 08｜晚上 11:02｜我的房間'), p('我第一次認真看自己的房間。'), p('床邊是幫她組到一半的層架。\n手機桌布是她的生日照。\n衣櫃裡，三年沒換的格子襯衫。'), big('我的生活裡，\n*沒有我。*')] },
+    { lines: [sys(), grn('杯子是空的，\n誰倒一點水你都當救命。'), sysbox('【任務三：把杯子裝滿。】\n【接下來一個月，選 3 件事放進你的行程。】')], go: 'sched' },
+  ],
+  sched: [{ mini: 'sched' }],
+  afterSched: [
+    { day: 22, lines: s => [h('DAY 09–22'), ...s.picks.map(k => p(PICKS[k].line)), b(s.picks.includes('standby') ? '有些夜晚，我還是在等那個提示音。' : '有一天我發現，\n我已經三天沒有點開她的限動了。')], go: 'd23' },
+  ],
+  d23: [
+    { day: 23, lines: [h('DAY 23｜32 樓茶水間'), p('咖啡機前，三個男生在看同一支手機。\n是生日派對那晚的影片。'), box('「各位，這就是傳說中的工具人禮物！」'), p('笑聲又湧上來。\n其中一個人抬頭，看到我。'), red('空氣安靜了一秒。')] },
+    { lines: [big('你要怎麼做？')], choices: [
+      { k: 'A', t: '低頭，假裝沒聽到，端著咖啡走開。', fx: { need: 2, calm: -4, spine: -6 }, go: 'd23a' },
+      { k: 'B', t: '「相簿是我自己印的，紙很好。你們要不要也做一本？」', fx: { spine: 10, attract: 6, calm: 2 }, go: 'd23b' },
+      { k: 'C', t: '「笑夠了沒？」把杯子重重放在桌上。', fx: { calm: -8, spine: 2 }, go: 'd23c' },
+    ] },
+  ],
+  d23a: [{ lines: [p('走廊很長。\n我聽到後面有人說：「他好可憐喔。」'), red('可憐，比好笑還難受。'), sys(), grn('逃跑不會讓故事消失，\n只會讓別人替你說完。')], go: 'branch30' }],
+  d23b: [{ lines: [p('他們愣住了。\n然後其中一個笑了，這次不是笑我。'), box('「靠，你這樣講好像真的有點帥。」'), sys(), grn('你拿回了故事的解釋權。'), sysbox('【32 樓對你的印象：已更新。】')], go: 'branch30' }],
+  d23c: [{ lines: [p('他們閉嘴了。\n但我回到座位，手還在抖。\n下午的 code 寫錯了三行。'), sys(), grn('生氣沒有錯。\n只是你把遙控器交給了他們。')], go: 'branch30' }],
+  branch30: [{ go: s => s.flags.photo ? 'd30' : 'd52' }],
+  d30: [
+    { day: 30, lines: [h('DAY 30｜週六｜攝影課'), p('作業是「拍一個你在乎的東西」。\n我交了一張凌晨的騎樓，雨還在下。'), p('旁邊的女生看了很久。她叫阿禾，\n短髮，相機背帶磨到發白。'), box('「你拍東西很溫柔。」'), box('「但你好像從來不把自己放進畫面裡。」')] },
+    { lines: [p('下課了，阿禾在收相機。'), big('你要說什麼？')], choices: [
+      { k: 'A', t: '「下週五要不要一起去拍夜景？」', fx: { attract: 6, spine: 6 }, flag: 'date', go: 'd30a' },
+      { k: 'B', t: '「謝謝。」然後低頭整理記憶卡。', go: 'd30b' },
+    ] },
+  ],
+  d30a: [{ lines: [box('「好啊。我知道一個頂樓，看得到 101。」'), p('我愣了一下。\n同樣一棟 101，'), big('這次，\n是有人約我。'), sys(), grn('注意到了嗎？\n你沒有想「她會不會覺得我很煩」。')], go: 'd52' }],
+  d30b: [{ lines: [p('她點點頭，背上相機走了。'), p('我盯著那張騎樓的照片看了很久。'), sys(), grn('機會不會一直站在原地等。\n這件事，你應該最懂。')], go: 'd52' }],
+  d52: [
+    { day: 52, lines: [h('DAY 52｜凌晨 2:07'), p('手機響了。是她。'), box('「小凡……你可以來接我嗎？」'), box('「他車上有別的女生的髮夾。」'), box('「我現在在路邊。\n我只剩你了。」')] },
+    { lines: [sys(), red('警告：需求感波動。'), sysbox('【「我只剩你了」，是她說過最重的一句話。】\n【也是你最想聽的一句話。】\n【所以，請特別小心。】')] },
+    { lines: [big('凌晨兩點。')], choices: [
+      { k: 'A', t: '「你在哪？我馬上過去。」抓起鑰匙就出門。', fx: { need: 12, calm: -4, spine: -4 }, go: 'd52a' },
+      { k: 'B', t: '「傳定位給我，我幫你叫車。電話不掛，陪你到家。」', fx: { calm: 8, spine: 8, need: -6 }, go: 'd52b' },
+      { k: 'C', t: '把手機翻過去，蓋上。', fx: { need: -4, calm: -8, spine: 2 }, go: 'd52c' },
+    ] },
+  ],
+  d52a: [{ lines: [p('我飆到她說的路口。\n她上車，靠在我肩上哭到睡著。'), p('隔天中午，她發了限動：'), box('「謝謝我最好的朋友🥹 有你真好」'), p('底下有人留言：「工具人又出動啦」'), red('她按了一個愛心。')], go: 'd90' }],
+  d52b: [{ lines: [p('我們講了四十分鐘的電話。\n她一直哭，後來慢慢不哭了。'), box('「……你今天怎麼沒有直接衝過來？\n我以為你會來。」'), b('「因為你現在需要的是回家，不是我。」'), p('電話那頭安靜了很久。'), sys(), grn('溫柔，但是有邊界。\n這是你目前做過最難的事。')], go: 'd90' }],
+  d52c: [{ lines: [p('我一夜沒睡。\n天亮的時候，她傳來一則訊息：「沒事了。」'), p('我不知道她是真的沒事，\n還是終於知道，我也會不在。'), sys(), grn('冷漠不是邊界，\n只是另一種逃跑。')], go: 'd90' }],
+  d90: [
+    { day: 90, lines: s => [h('DAY 90｜信義區頂樓｜公司尾牙'), p('同一個頂樓。同一片落地窗。\n101 的燈還是一樣亮。'), p('這次，我是公司請來的活動攝影。'),
+      ...(s.attract >= 40 ? [b('推門進去的時候，有人轉頭看了一眼。'), red('然後，沒有轉開。')] : [b('推門進去的時候，沒有人轉頭。'), p('我已經習慣了。')])] },
+    { lines: [p('活動快結束時，她走過來。\n米色洋裝換成黑色，手腕上沒有卡地亞。'), box('「小凡，你最近好像變了。」'), box('「這個週末……要不要一起吃飯？\n只有我們兩個。」')] },
+    { lines: s => [sys(), grn('九十天前，\n你等這句話等到發抖。'), sysbox(`【現在，選擇權在你手上。】\n【目前選擇權：${choicePct(s)}%】`)] },
+    { lines: [big('「只有我們兩個。」')], choices: [
+      { k: 'A', t: '「好！」', go: 'endA' },
+      { k: 'B', t: '「我考慮一下，週五回你。」', req: 30, go: 'endB' },
+      { k: 'C', t: '「謝謝。但我週末有約了。」', req: 65, go: s => s.flags.date ? 'endTrue' : 'endC' },
+    ] },
+  ],
+  endA: [
+    { lines: [p('她笑了。\n嘴角那顆很小、很小的痣。'), box('「太好了！那你記得帶相機喔。」'), box('「我要換新的大頭貼，\n你拍照最好看了。」'), red('……')] },
+    { lines: [sys(), grn('恭喜升級。\n從修電腦，升級成攝影師。')], end: 'A' },
+  ],
+  endB: [
+    { lines: [p('她愣了一下，\n好像第一次被人這樣回答。'), box('「……好，那我等你。」'), p('我把相機收進包包，走向電梯。'), b('原來被等，是這種感覺。')] },
+    { lines: [sys(), grn('你沒有拒絕她。\n你只是不再自動答應。')], end: 'B' },
+  ],
+  endC: [
+    { lines: [p('她的笑僵了零點五秒。'), box('「跟誰啊？」'), b('「跟我自己。週六要去外拍。」'), p('電梯門關上前，我看見她拿出手機，\n又放了回去。'), b('這一次，她沒有傳訊息。')] },
+    { lines: [sys(), grn('她終於看見你了。\n但你已經不需要被她看見。')], end: 'C' },
+  ],
+  endTrue: [
+    { lines: [p('她的笑僵了零點五秒。'), box('「跟誰啊？」'), b('「樓下有人在等我。」'), p('電梯一路往下。\n我發現自己沒有回頭。')] },
+    { lines: [h('1F｜大廳'), p('阿禾坐在門口的階梯上，相機掛在脖子。'), box('「拍完了？我剛剛在樓下拍到超美的 101。」'), box('「欸，你站那邊別動。」'), p('快門聲。')] },
+    { lines: [big('九十天來第一次，'), red('我在畫面裡。')], end: 'T' },
+  ],
+};
+
+const ENDINGS = {
+  A: { name: 'BAD END｜專屬攝影工具人', lvl: 'Lv.2 專屬攝影工具人' },
+  B: { name: 'NORMAL END｜不再自動答應', lvl: 'Lv.30 有邊界的好人' },
+  C: { name: 'GOOD END｜跟我自己有約', lvl: 'Lv.60 自己人生的主角' },
+  T: { name: 'TRUE END｜我在畫面裡', lvl: 'Lv.MAX 重新被認識的人' },
+};
+
+const $ = id => document.getElementById(id);
+const card = $('card'), body = $('body'), panel = $('panel');
+let timers = [];
+function clearTimers() { timers.forEach(t => { clearTimeout(t); clearInterval(t); }); timers = []; }
+
+function fmt(t) {
+  const esc = t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  return esc.replace(/\*(.+?)\*/g, '<span class="r">$1</span>').replace(/_(.+?)_/g, '<span class="g">$1</span>');
+}
+function renderLines(lines) {
+  body.innerHTML = '';
+  lines.forEach(([k, t], n) => {
+    const d = document.createElement('div');
+    d.className = 'ln ' + k;
+    d.style.animationDelay = (n * 0.12) + 's';
+    d.innerHTML = fmt(t);
+    body.appendChild(d);
+  });
+}
+function applyFx(fx) {
+  if (!fx) return;
+  const box = $('toasts');
+  Object.entries(fx).forEach(([k, v], n) => {
+    S[k] = clamp(S[k] + v);
+    const good = k === 'need' ? v < 0 : v > 0;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.style.color = good ? 'var(--green)' : 'var(--red)';
+    el.style.animationDelay = (n * 0.1) + 's';
+    el.textContent = `${NAMES[k]} ${v > 0 ? '+' : ''}${v}`;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 2800);
+  });
+}
+function go(target) {
+  const id = typeof target === 'function' ? target(S) : target;
+  S.scene = id; S.i = 0;
+  show();
+}
+function next() {
+  const slide = SCENES[S.scene][S.i];
+  if (!slide || slide.choices || slide.mini || slide.end) return;
+  if (slide.go && S.i === SCENES[S.scene].length - 1) return go(slide.go);
+  if (S.i < SCENES[S.scene].length - 1) { S.i++; show(); }
+}
+function show() {
+  clearTimers();
+  panel.hidden = true;
+  const slide = SCENES[S.scene][S.i];
+  if (!slide.lines && !slide.mini && slide.go) return go(slide.go);
+  if (slide.day) S.day = slide.day;
+  $('day').textContent = `DAY ${String(S.day).padStart(2, '0')}/90`;
+  card.classList.remove('locked');
+  $('arrow').hidden = false;
+  $('hint').textContent = '點一下繼續';
+  if (slide.mini === 'resist') return miniResist();
+  if (slide.mini === 'sched') return miniSched();
+  renderLines(typeof slide.lines === 'function' ? slide.lines(S) : slide.lines);
+  if (slide.choices) {
+    card.classList.add('locked');
+    $('arrow').hidden = true;
+    $('hint').textContent = S.scene === 'title' ? '第 2 集｜去，還是不去？' : '選一個';
+    const wrap = document.createElement('div');
+    wrap.className = 'choices ln';
+    wrap.style.animationDelay = (body.children.length * 0.12) + 's';
+    const pct = choicePct();
+    slide.choices.forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'choice';
+      const locked = c.req != null && pct < c.req;
+      btn.disabled = locked;
+      btn.innerHTML = `<span class="k">${c.k}</span><span class="t">${fmt(c.t)}${locked ? `<span class="lock">【選擇權不足：需要 ${c.req}%】</span>` : ''}</span>`;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        applyFx(c.fx);
+        if (c.flag) S.flags[c.flag] = true;
+        go(c.go);
+      });
+      wrap.appendChild(btn);
+    });
+    body.appendChild(wrap);
+  }
+  if (slide.end) {
+    $('hint').textContent = '點一下看結局';
+  }
+}
+
+/* ---------- minigame: 24 小時不傳訊息 ---------- */
+const DRAFTS = ['你電腦還好嗎？', '我其實今天有空啦', '彥廷會修電腦嗎😅', '在幹嘛', '晚餐吃了嗎？', '剛剛那樣講是不是太兇了', '想你', '對不起'];
+function miniResist() {
+  card.classList.add('locked');
+  $('arrow').hidden = true;
+  $('hint').textContent = '24 小時倒數';
+  S.sent = 0;
+  body.innerHTML = `
+    <div class="ln sys">SKYLER：</div>
+    <div class="ln b">手指會自己打字。<span class="g">打完之後，由你決定：刪除，還是送出。</span></div>
+    <div class="phone ln">
+      <div class="chat-name">她</div>
+      <div class="bub her">那我問彥廷好了。</div>
+      <div id="sentList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="draft"><span class="txt empty" id="dtxt">（輸入訊息…）</span><span class="btns"><button class="del" id="del" type="button" disabled>刪除</button><button class="send" id="send" type="button" disabled>送出</button></span></div>
+    </div>
+    <div class="meter ln"><span id="clock">剩下 24 小時</span><span id="score">已刪除 0｜已送出 0</span></div>
+    <button class="btn solid ln" id="startR" type="button">開始忍耐</button>`;
+  let idx = 0, deleted = 0, live = false;
+  const del = $('del'), send = $('send'), dtxt = $('dtxt');
+  const upd = () => { $('score').textContent = `已刪除 ${deleted}｜已送出 ${S.sent}`; $('clock').textContent = `剩下 ${Math.max(0, 24 - idx * 3)} 小時`; };
+  function spawn() {
+    if (idx >= DRAFTS.length) return finish();
+    const txt = DRAFTS[idx];
+    let typed = 0; live = false;
+    dtxt.classList.remove('empty'); dtxt.textContent = '';
+    const typer = setInterval(() => {
+      typed++; dtxt.textContent = txt.slice(0, typed);
+      if (typed >= txt.length) { clearInterval(typer); live = true; del.disabled = send.disabled = false; }
+    }, 90);
+    timers.push(typer);
+    del.onclick = e => {
+      e.stopPropagation();
+      if (!live) return;
+      live = false; deleted++;
+      endOne();
+    };
+    send.onclick = e => {
+      e.stopPropagation();
+      if (!live) return;
+      live = false; S.sent++;
+      const m = document.createElement('div');
+      m.className = 'bub me'; m.innerHTML = `${fmt(txt)}<small>已送出</small>`;
+      $('sentList').appendChild(m);
+      endOne();
+    };
+  }
+  function endOne() {
+    idx++; upd();
+    del.disabled = send.disabled = true; dtxt.textContent = '（輸入訊息…）'; dtxt.classList.add('empty');
+    timers.push(setTimeout(spawn, 600 + Math.random() * 500));
+  }
+  function finish() {
+    if (S.sent === 0) applyFx({ calm: 6, spine: 8, need: -8 });
+    else applyFx({ need: S.sent * 3, calm: -S.sent });
+    timers.push(setTimeout(() => go('afterResist'), 900));
+  }
+  $('startR').addEventListener('click', e => { e.stopPropagation(); e.target.remove(); spawn(); });
+}
+
+/* ---------- minigame: 把杯子裝滿 ---------- */
+function miniSched() {
+  card.classList.add('locked');
+  $('arrow').hidden = true;
+  $('hint').textContent = '選 3 件事';
+  const sel = new Set();
+  body.innerHTML = `<div class="ln h">【任務三】DAY 09–22 的行程</div><div class="ln b">選 3 件事，放進你的生活。</div><div class="grid ln" id="grid"></div><button class="btn solid ln" id="ok" type="button" disabled>確認行程（0/3）</button>`;
+  const grid = $('grid'), ok = $('ok');
+  Object.entries(PICKS).forEach(([k, v]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'act'; btn.setAttribute('aria-pressed', 'false');
+    btn.innerHTML = `<b>${v.name}</b><span>${v.note}</span>`;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (sel.has(k)) sel.delete(k); else if (sel.size < 3) sel.add(k);
+      [...grid.children].forEach((c, n) => c.setAttribute('aria-pressed', sel.has(Object.keys(PICKS)[n])));
+      ok.disabled = sel.size !== 3;
+      ok.textContent = `確認行程（${sel.size}/3）`;
+    });
+    grid.appendChild(btn);
+  });
+  ok.addEventListener('click', e => {
+    e.stopPropagation();
+    S.picks = [...sel];
+    const total = {};
+    S.picks.forEach(k => {
+      Object.entries(PICKS[k].fx).forEach(([s, v]) => total[s] = (total[s] || 0) + v);
+      if (PICKS[k].flag) S.flags[PICKS[k].flag] = true;
+    });
+    applyFx(total);
+    go('afterSched');
+  });
+}
+
+/* ---------- panel & ending ---------- */
+function statRows() {
+  return ['need', 'calm', 'spine', 'attract'].map(k => {
+    const warn = k === 'need' && S.need >= 70;
+    const tag = k === 'need' ? (S.need >= 90 ? ' ・ 極度危險' : S.need >= 70 ? ' ・ 危險' : S.need >= 40 ? ' ・ 正常' : ' ・ 穩定') : '';
+    return `<div class="stat"><div class="row"><span>${NAMES[k]}</span><span class="${warn ? 'warn-t' : ''}">${S[k]}${tag}</span></div><div class="bar ${warn ? 'warn' : ''}"><i style="width:${S[k]}%"></i></div></div>`;
+  }).join('');
+}
+function openPanel() {
+  const c = choicePct();
+  panel.innerHTML = `
+    <div class="panel-head"><span class="ttl">【宿主面板】</span><span class="who">林小凡</span></div>
+    <div><div class="lvl-label">等級</div><div class="lvl">${levelName(c)}</div></div>
+    ${statRows()}
+    <div class="pick"><span>選擇權</span><span class="${c < 30 ? 'r' : 'g'}">${c}%${c === 0 ? '｜你只能被選' : ''}</span></div>
+    <div class="dots">目標：90 天後 → Lv.MAX　現在 DAY ${S.day}</div>
+    <button class="btn" id="closeP" type="button">返回故事</button>`;
+  panel.hidden = false;
+  $('closeP').addEventListener('click', () => { panel.hidden = true; card.focus(); });
+}
+function seen() { try { return JSON.parse(localStorage.getItem('ep02-endings') || '[]'); } catch { return []; } }
+function markSeen(e) { try { const s = new Set(seen()); s.add(e); localStorage.setItem('ep02-endings', JSON.stringify([...s])); } catch {} }
+function showEnding(code) {
+  markSeen(code);
+  const E = ENDINGS[code], c = choicePct(), got = seen();
+  card.classList.add('locked');
+  $('arrow').hidden = true;
+  $('hint').textContent = 'EP.02 完';
+  body.style.justifyContent = 'flex-start';
+  body.innerHTML = `
+    <div class="ln h">${E.name}</div>
+    <div class="ln panel" style="position:static;padding:18px;gap:10px">
+      <div class="panel-head"><span class="ttl">【宿主面板・DAY 90】</span><span class="who">林小凡</span></div>
+      <div class="lvl">${E.lvl}</div>
+      ${statRows()}
+      <div class="pick"><span>選擇權</span><span class="${c < 30 ? 'r' : 'g'}">${c}%</span></div>
+    </div>
+    <div class="ln skill">
+      <span class="st">本集技能｜收藏起來</span>
+      <h3>上岸的 6 個方法</h3>
+      <div class="it"><span class="n">01</span><b>杯子裝滿</b><span>自己的生活先滿，一點水就不再是救命</span></div>
+      <div class="it"><span class="n">02</span><b>選擇變多</b><span>世界變大，她就只是其中一個人</span></div>
+      <div class="it"><span class="n">03</span><b>看見本人</b><span>停止腦補，看她實際做了什麼</span></div>
+      <div class="it"><span class="n">04</span><b>走下神壇</b><span>把她放回地面，你才站得起來</span></div>
+      <div class="it"><span class="n">05</span><b>給得剛好</b><span>有邊界的溫柔，才會被珍惜</span></div>
+      <div class="it"><span class="n">06</span><b>補上缺口</b><span>你的價值，不靠「被需要」證明</span></div>
+    </div>
+    <div class="ln dots">已解鎖結局 ${['A', 'B', 'C', 'T'].map(e => `<i class="${got.includes(e) ? 'on' : ''}" title="${ENDINGS[e].name}"></i>`).join('')} ${got.length}/4</div>
+    <div class="ln endrow"><button class="btn solid" id="again" type="button">重新開始 DAY 01</button></div>`;
+  body.scrollTop = 0;
+  $('again').addEventListener('click', e => { e.stopPropagation(); body.style.justifyContent = ''; S = fresh(); show(); });
+}
+
+card.addEventListener('click', () => {
+  const slide = SCENES[S.scene][S.i];
+  if (slide && slide.end && body.querySelector('.ln') && !body.querySelector('.skill')) return showEnding(slide.end);
+  next();
+});
+document.addEventListener('keydown', e => {
+  if (!panel.hidden) { if (e.key === 'Escape') panel.hidden = true; return; }
+  if (e.target.closest && e.target.closest('button')) return;
+  if (['ArrowRight', ' ', 'Enter'].includes(e.key)) {
+    e.preventDefault();
+    const slide = SCENES[S.scene][S.i];
+    if (slide && slide.end && !body.querySelector('.skill')) return showEnding(slide.end);
+    next();
+  }
+});
+$('panelBtn').addEventListener('click', e => { e.stopPropagation(); panel.hidden ? openPanel() : (panel.hidden = true); });
+
+function start(data) {
+  S = data && data.S ? data.S : fresh();
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  show();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>
